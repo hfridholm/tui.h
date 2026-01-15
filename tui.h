@@ -3,7 +3,7 @@
  *
  * Written by Hampus Fridholm
  *
- * Last updated: 2025-12-31
+ * Last updated: 2026-01-15
  */
 
 #ifndef TUI_H
@@ -3494,77 +3494,134 @@ bool tui_list_event(tui_list_t* list, int key)
 }
 
 /*
- * Set window to active window, but only if it is visable
+ * Get 1st existing menu
+ */
+static inline tui_menu_t* tui_1st_menu_get(tui_t* tui)
+{
+  for (size_t index = 0; index < tui->menu_count; index++)
+  {
+    tui_menu_t* menu = tui->menus[index];
+
+    if (menu)
+    {
+      return menu;
+    }
+  }
+
+  return NULL;
+}
+
+/*
+ * Get 1st existing window in menu
+ */
+static inline tui_window_t* tui_menu_1st_window_get(tui_menu_t* menu)
+{
+  for (size_t index = 0; index < menu->window_count; index++)
+  {
+    tui_window_t* window = menu->windows[index];
+
+    if (window)
+    {
+      return window;
+    }
+  }
+
+  return NULL;
+}
+
+/*
+ * Get 1st existing window in tui
+ */
+static inline tui_window_t* tui_1st_window_get(tui_t* tui)
+{
+  for (size_t index = 0; index < tui->window_count; index++)
+  {
+    tui_window_t* window = tui->windows[index];
+
+    if (window)
+    {
+      return window;
+    }
+  }
+
+  return NULL;
+}
+
+void tui_menu_set(tui_t* tui, tui_menu_t* menu);
+
+/*
+ * Set window to active window
  *
- * Call enter event for new window and exit event for old window
+ * Call enter event for new window and exit event for previous window
  *
  * Set window's menu to active menu
  */
 void tui_window_set(tui_t* tui, tui_window_t* window)
 {
-  if (tui->window != window && window->_is_visable)
+  tui_window_t* prev_window = tui->window;
+
+  // Only set new window if it is in fact NEW (not the same)
+  if (window == prev_window) return;
+
+  tui->window = window;
+
+  // 1. Call exit event for previous window, if it exists
+  if (prev_window && prev_window->event.exit)
   {
-    tui_window_t* last_window = tui->window;
+    prev_window->event.exit(prev_window);
+  }
 
-    tui->window = window;
+  // 2. Call enter event for new window, if it exists
+  if (window && window->event.enter)
+  {
+    window->event.enter(window);
+  }
 
-    if (last_window && last_window->event.exit)
-    {
-      last_window->event.exit(last_window);
-    }
-
-    if (window && window->event.enter)
-    {
-      window->event.enter(window);
-    }
-
-    if (window->menu)
-    {
-      tui->menu = window->menu;
-    }
+  // 3. Set menu to window's menu, if it exists
+  if (window && window->menu)
+  {
+    tui_menu_set(tui, window->menu);
   }
 }
 
 /*
  * Set menu to active menu
  *
- * Call enter event for new menu and exit event for old menu
+ * Call enter event for new menu and exit event for previous menu
  *
  * Set window to active window if needed
  */
 void tui_menu_set(tui_t* tui, tui_menu_t* menu)
 {
-  if (tui->menu == menu) return;
+  tui_menu_t* prev_menu = tui->menu;
 
-  if (tui->menu && tui->menu->event.exit)
-  {
-    tui->menu->event.exit(tui->menu);
-  }
+  // Only set new menu if it is in fact NEW (not the same)
+  if (menu == prev_menu) return;
 
   tui->menu = menu;
 
-  // If the active window is from another menu,
-  // choose a window in menu to set active
-  if (!tui->window ||
-      (tui->window && tui->window->menu && tui->window->menu != menu))
+  // 1. Call exit event for previous menu, if it exists
+  if (prev_menu && prev_menu->event.exit)
   {
-    for (size_t index = 0; index < menu->window_count; index++)
-    {
-      tui_window_t* window = menu->windows[index];
-
-      // Change this to check if window is visable and interactive
-      if (window)
-      {
-        tui_window_set(tui, window);
-
-        break;
-      }
-    }
+    prev_menu->event.exit(tui->menu);
   }
 
+  // 2. Call enter event for new menu, if it exists
   if (menu && menu->event.enter)
   {
     menu->event.enter(menu);
+  }
+
+  // If no active window exist or it is from another menu,
+  // activate 1st window in menu
+  if (!tui->window ||
+      (tui->window->menu && tui->window->menu != menu))
+  // (it is crucial to check if tui->window->menu don't exist,
+  //  because the active window may as well be a tui window)
+  {
+    tui_window_t* window = tui_menu_1st_window_get(menu);
+
+    tui_window_set(tui, window);
   }
 }
 
@@ -3628,11 +3685,42 @@ void tui_stop(tui_t* tui)
 }
 
 /*
+ * Set an active window for tui
+ */
+static inline void tui_1st_window_set(tui_t* tui)
+{
+  // Try to activate 1st menu
+  tui_menu_t* menu = tui_1st_menu_get(tui);
+
+  if (menu)
+  {
+    tui_menu_set(tui, menu);
+  }
+
+  // If no window is sat, try to activate 1st tui window
+  if (!tui->window)
+  {
+    tui_window_t* window = tui_1st_window_get(tui);
+
+    if (window)
+    {
+      tui_window_set(tui, window);
+    }
+  }
+}
+
+/*
  * Start tui - main loop
  */
 void tui_start(tui_t* tui)
 {
   tui->is_running = true;
+
+  // If no window is active, activate 1st window
+  if (!tui->window)
+  {
+    tui_1st_window_set(tui);
+  }
 
   tui_render(tui);
 

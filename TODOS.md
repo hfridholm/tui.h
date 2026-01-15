@@ -1,8 +1,7 @@
 # Todos
 
 ## Quick Fixes
-* ensure menu exit event is triggered when switching to window in other menu
 * why do tui_list_t have is_vertical? use parent.is_vertical?
-* on tui_start, if no window is sat, set a window
 * add bold and italic attribute to structs, beside tui_color_t
-* rect height is wrong (valkommen window in ica-kassa)
+* in tui_children_rect_calc: don't make is_atomic windows invisable first
+  (go through children again if align_size is larger than max_size and make !is_atomic windows invisable in first hand, then is_atomic windows if necessary)

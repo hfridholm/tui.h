@@ -26,7 +26,7 @@ wget https://raw.githubusercontent.com/hfridholm/tui.h/refs/heads/master/tui.h
 
 ### SHA256
 ```
-3eae02cc5a2c9b4a4f93657c8b59a235df67012d8bb09319c20ce00d1fc68d45  tui.h
+9f5592368fdd7f31f5af0441d9cf30f61ec9989e1c5dab82e13556b7c32fbc5a  tui.h
 ```
 
 This library depends on the `ncurses` library. Make sure it is installed when compiling your program. The following are commands for installing ncurses with pacman on Arch and apt on Debian based distros.
