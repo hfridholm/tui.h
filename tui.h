@@ -249,6 +249,14 @@ typedef struct tui_list_t
 
 /*
  * Position
+ *
+ * START  : Content positioned on top (horizontal) or left (vertical)
+ *          with any space on bottom (horizontal) or right (vertical)
+ *
+ * CENTER : Content positioned in center with any space on both sides
+ *
+ * END    : Content positioned on bottom (horizontal) or right (vertical)
+ *          with any space on top (horizontal) or left (vertical)
  */
 typedef enum tui_pos_t
 {
@@ -259,6 +267,22 @@ typedef enum tui_pos_t
 
 /*
  * Alignment
+ *
+ * START   : Children pushed to left (horizontal) or top (vertical)
+ *           with any remaining space to right (horizontal) or bottom (vertical)
+ *
+ * CENTER  : Children grouped in center with any remaining space on both sides
+ *
+ * END     : Children pushed to right (horizontal) or bottom (vertical)
+ *           with any remaining space to left (horizontal) or top (vertical)
+ *
+ * BETWEEN : Any remaining space distributed between children,
+ *           but not before first child and after last child
+ *
+ * AROUND  : Any remaining space distributed between children,
+ *           and before first child and after last child
+ *
+ * EVENLY  : All children have same size - leaving no remaining space
  */
 typedef enum tui_align_t
 {
@@ -1730,7 +1754,30 @@ static inline void tui_child_vert_rect_calc(tui_rect_t* rect, tui_window_parent_
 
   int h_gap = 0;
 
-  if (child->h_grow)
+  // Make every child the same height
+  if (parent->align == TUI_ALIGN_EVENLY)
+  {
+    // The total height of all children combined
+    int total_h = max_size.h;
+
+    if (parent->has_gap)
+    {
+      // Add this gap after current child
+      h_gap += 1;
+
+      // Account for the gap between each child window
+      total_h = MAX(0, max_size.h - (align_count - 1) * 1);
+    }
+
+    h = total_h / align_count;
+
+    // Grow first windows a little bit more to fill out extra padding
+    if (total_h - h * align_count > *align_index)
+    {
+      h += 1;
+    }
+  }
+  else if (child->h_grow)
   {
     if (parent->has_gap)
     {
@@ -1856,16 +1903,42 @@ static inline void tui_child_horiz_rect_calc(tui_rect_t* rect, tui_window_parent
 
   int w_gap = 0;
 
-  if (child->w_grow)
+  // Make every child the same width
+  if (parent->align == TUI_ALIGN_EVENLY)
+  {
+    // The total width of all children combined
+    int total_w = max_size.w;
+
+    if (parent->has_gap)
+    {
+      // Add this gap after current child
+      w_gap += 2;
+
+      // Account for the gap between each child window
+      total_w = MAX(0, max_size.w - (align_count - 1) * 2);
+    }
+
+    w = total_w / align_count;
+
+    // Grow first windows a little bit more to fill out extra padding
+    if (total_w - w * align_count > *align_index)
+    {
+      w += 1;
+    }
+  }
+  else if (child->w_grow)
   {
     if (parent->has_gap)
     {
       // Add this gap after current child
       w_gap += 2;
 
+      // Get the total available space for all children to grow
       w_space = MAX(0, w_space - (align_count - 1) * 2); 
     }
 
+    // Get the available space for this child to grow
+    // (all children grow by the same amount)
     int gap = w_space / grow_count;
 
     w += gap;
