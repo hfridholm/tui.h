@@ -3,7 +3,7 @@
  *
  * Written by Hampus Fridholm
  *
- * Last updated: 2025-12-26
+ * Last updated: 2025-12-31
  */
 
 #ifndef TUI_H
@@ -371,8 +371,6 @@ typedef struct tui_t
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "debug.h"
 
 #define CACHE_SIZE 128
 
@@ -3677,8 +3675,6 @@ bool tui_tab_forward(tui_t* tui)
     if (window_index == -1)
     {
       // Here, a window that belongs to menu is not showing up
-      error_print("menu tui_window_index_get");
-
       return false;
     }
 
@@ -3697,8 +3693,6 @@ bool tui_tab_forward(tui_t* tui)
     if (window_index == -1)
     {
       // Here, a window that belongs to tui is not showing up
-      error_print("tui tui_window_index_get");
-
       return false;
     }
 
@@ -3765,8 +3759,6 @@ bool tui_tab_backward(tui_t* tui)
     if (child_index == -1)
     {
       // Here: Child window is not showing up in parent's children
-      error_print("parent tui_window_index_get");
-
       return false;
     }
 
@@ -3789,8 +3781,6 @@ bool tui_tab_backward(tui_t* tui)
     if (window_index == -1)
     {
       // Here, a window that belongs to menu is not showing up
-      error_print("tui_window_index_get");
-
       return false;
     }
 
@@ -3806,8 +3796,6 @@ bool tui_tab_backward(tui_t* tui)
     if (window_index == -1)
     {
       // Here, a window that belongs to tui is not showing up
-      error_print("tui_window_index_get");
-
       return false;
     }
 
@@ -3828,6 +3816,26 @@ bool tui_tab_backward(tui_t* tui)
   if (tui_windows_tab_backward(tui, menu->windows, menu->window_count))
   {
     return true;
+  }
+
+  return false;
+}
+
+/*
+ * Handle forward tab and backward tab event
+ */
+bool tui_tab_event(tui_t* tui, int key)
+{
+  switch (key)
+  {
+    case KEY_TAB:
+      return tui_tab_forward(tui);
+
+    case KEY_RTAB:
+      return tui_tab_backward(tui);
+
+    default:
+      break;
   }
 
   return false;
