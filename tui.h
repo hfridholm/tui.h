@@ -389,7 +389,7 @@ typedef struct tui_t
 
 #endif // TUI_H
 
-#ifdef TUI_IMPLEMENT
+#ifdef TUI_IMPLEMENTATION
 
 #include <stdlib.h>
 #include <errno.h>
@@ -4080,4 +4080,4 @@ int tui_menu_window_search_set(tui_menu_t* menu, char* search)
   return 0;
 }
 
-#endif // TUI_IMPLEMENT
+#endif // TUI_IMPLEMENTATION

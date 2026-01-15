@@ -26,7 +26,7 @@ wget https://raw.githubusercontent.com/hfridholm/tui.h/refs/heads/master/tui.h
 
 ### SHA256
 ```
-6277d7ea5e9e72bae982051ddfe606da6014aa22cd42d8c008a7496a4104fa11  tui.h
+3eae02cc5a2c9b4a4f93657c8b59a235df67012d8bb09319c20ce00d1fc68d45  tui.h
 ```
 
 This library depends on the `ncurses` library. Make sure it is installed when compiling your program. The following are commands for installing ncurses with pacman on Arch and apt on Debian based distros.
@@ -47,16 +47,16 @@ To use the tui.h library in your project, simply include it in every source file
 #include "tui.h"
 ```
 
-**One** of the `.c` files (preferably the one with the `main` function) should define the implementation. It is crucial that TUI_IMPLEMENT is defined just before the **last** include of tui.h in the whole compilation unit.
+**One** of the `.c` files (preferably the one with the `main` function) should define the implementation. It is crucial that TUI_IMPLEMENTATION is defined just before the **last** include of tui.h in the whole compilation unit.
 ```c
-#define TUI_IMPLEMENT
+#define TUI_IMPLEMENTATION
 ```
 
 If you are unsure where to place the #include and the #define, just put them in the following order in your `main.c` file, after the includes and before your code.
 ```c
 // includes
 
-#define TUI_IMPLEMENT
+#define TUI_IMPLEMENTATION
 #include "tui.h"
 
 // your code
