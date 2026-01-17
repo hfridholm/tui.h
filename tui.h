@@ -2244,6 +2244,12 @@ static inline void tui_children_rect_calc(tui_window_parent_t* parent)
     {
       tui_rect_t parent_rect = parent->head._rect;
 
+      if (parent->has_shadow)
+      {
+        parent_rect.w -= 2;
+        parent_rect.h -= 1;
+      }
+
       child->_rect = tui_window_rect_get(child->rect, parent_rect.w, parent_rect.h);
     }
 
