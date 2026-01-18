@@ -442,40 +442,53 @@ static inline short tui_color_pair_get(tui_color_t color)
 
 /*
  * Inherit color in case of transparency
+ *
+ * This function is bare parent child inheritance
  */
-static inline tui_color_t tui_color_inherit(tui_t* tui, tui_window_t* window, tui_color_t color)
+static inline tui_color_t tui_color_inherit(tui_color_t parent, tui_color_t child)
 {
-  // If color has no transparency, it don't need to inherit
-  if (color.fg != TUI_COLOR_NONE && color.bg != TUI_COLOR_NONE)
+  if (child.fg == TUI_COLOR_NONE)
   {
-    return color;
+    child.fg = parent.fg;
   }
 
-  // Get inherit color
-  tui_color_t inherit_color = { 0 };
-
-  if (window)
+  if (child.bg == TUI_COLOR_NONE)
   {
-    inherit_color = window->_color;
-  }
-  else if (tui->menu)
-  {
-    inherit_color = tui->menu->_color;
-  }
-  else
-  {
-    inherit_color = tui->color;
+    child.bg = parent.bg;
   }
 
-  // Apply inherit color in case of transparency
-  if (color.fg == TUI_COLOR_NONE)
+  return child;
+}
+
+/*
+ * Inherit true color from window's ancestors, in case of transparency
+ */
+static inline tui_color_t tui_window_color_inherit(tui_window_t* window, tui_color_t color)
+{
+  if (!window) return color;
+
+  // First, try to inherit color from parent window
+  tui_window_parent_t* parent = window->parent;
+
+  if (parent)
   {
-    color.fg = inherit_color.fg;
+    color = tui_color_inherit(parent->head._color, color);
   }
 
-  if (color.bg == TUI_COLOR_NONE)
+  // If parent window color has transparency, try to inherit color from menu
+  tui_menu_t* menu = window->menu;
+
+  if (menu)
   {
-    color.bg = inherit_color.bg;
+    color = tui_color_inherit(menu->_color, color);
+  }
+
+  // If menu color has transparency, inherit base color from tui
+  tui_t* tui = window->tui;
+
+  if (tui)
+  {
+    color = tui_color_inherit(tui->color, color);
   }
 
   return color;
@@ -506,22 +519,20 @@ static inline void tui_ncurses_window_color_off(WINDOW* window, tui_color_t colo
  */
 void tui_border_draw(tui_window_parent_t* window)
 {
+  tui_window_t* head = &window->head;
+
   tui_border_t border = window->border;
 
   if (!border.is_active) return;
 
 
-  tui_window_t* head = &window->head;
+  // Inherit color from window
+  tui_color_t color = tui_color_inherit(window->head._color, border.color);
 
-  tui_color_t color = tui_color_inherit(head->tui, (tui_window_t*) window, border.color);
-
+  // If window has border with depth,
+  // draw black and white border to show illusion
   tui_color_t color1 = color;
   tui_color_t color2 = color;
-
-  // If the window has a shadow,
-  // adjust for the height and width difference
-  int shadow_h = window->has_shadow ? 1 : 0;
-  int shadow_w = window->has_shadow ? 2 : 0;
 
   switch (border.depth)
   {
@@ -539,26 +550,32 @@ void tui_border_draw(tui_window_parent_t* window)
       break;
   }
 
-  if (color.fg != TUI_COLOR_NONE || color.bg != TUI_COLOR_NONE)
-  {
-    tui_ncurses_window_color_on(head->window, color1);
+  // If the window has a shadow,
+  // adjust for the height and width difference
+  int shadow_h = window->has_shadow ? 1 : 0;
+  int shadow_w = window->has_shadow ? 2 : 0;
 
-    mvwaddch(head->window, 0,                            0, ACS_ULCORNER);
-    mvwaddch(head->window, head->_rect.h - 1 - shadow_h, 0, ACS_LLCORNER);
-    mvwhline(head->window, 0,                            1, ACS_HLINE, head->_rect.w - 2 - shadow_w);
-    mvwvline(head->window, 1,                            0, ACS_VLINE, head->_rect.h - 2 - shadow_h);
 
-    tui_ncurses_window_color_off(head->window, color1);
+  // Draw left-upper part of border
+  tui_ncurses_window_color_on(head->window, color1);
 
-    tui_ncurses_window_color_on(head->window, color2);
+  mvwaddch(head->window, 0,                            0, ACS_ULCORNER);
+  mvwaddch(head->window, head->_rect.h - 1 - shadow_h, 0, ACS_LLCORNER);
+  mvwhline(head->window, 0,                            1, ACS_HLINE, head->_rect.w - 2 - shadow_w);
+  mvwvline(head->window, 1,                            0, ACS_VLINE, head->_rect.h - 2 - shadow_h);
 
-    mvwaddch(head->window, 0,                            head->_rect.w - 1 - shadow_w, ACS_URCORNER);
-    mvwaddch(head->window, head->_rect.h - 1 - shadow_h, head->_rect.w - 1 - shadow_w, ACS_LRCORNER);
-    mvwvline(head->window, 1,                            head->_rect.w - 1 - shadow_w, ACS_VLINE, head->_rect.h - 2 - shadow_h);
-    mvwhline(head->window, head->_rect.h - 1 - shadow_h, 1,                            ACS_HLINE, head->_rect.w - 2 - shadow_w);
+  tui_ncurses_window_color_off(head->window, color1);
 
-    tui_ncurses_window_color_off(head->window, color2);
-  }
+
+  // Draw right-bottom part of border
+  tui_ncurses_window_color_on(head->window, color2);
+
+  mvwaddch(head->window, 0,                            head->_rect.w - 1 - shadow_w, ACS_URCORNER);
+  mvwaddch(head->window, head->_rect.h - 1 - shadow_h, head->_rect.w - 1 - shadow_w, ACS_LRCORNER);
+  mvwvline(head->window, 1,                            head->_rect.w - 1 - shadow_w, ACS_VLINE, head->_rect.h - 2 - shadow_h);
+  mvwhline(head->window, head->_rect.h - 1 - shadow_h, 1,                            ACS_HLINE, head->_rect.w - 2 - shadow_w);
+
+  tui_ncurses_window_color_off(head->window, color2);
 }
 
 /*
@@ -1287,10 +1304,14 @@ static inline void tui_window_text_render(tui_window_text_t* window)
 
   overwrite(parent, head->window);
 
-  head->_color = tui_color_inherit(head->tui, (tui_window_t*) head->parent, head->color);
+
+  // Inherit color from window's ancestors
+  head->_color = tui_window_color_inherit((tui_window_t*) window, head->color);
 
   tui_ncurses_window_color_on(head->window, head->_color);
 
+
+  // Draw background
   if (head->color.bg != TUI_COLOR_NONE)
   {
     tui_ncurses_window_fill(head->window);
@@ -1316,10 +1337,14 @@ static inline void tui_window_grid_render(tui_window_grid_t* window)
 
   overwrite(parent, head->window);
 
-  head->_color = tui_color_inherit(head->tui, (tui_window_t*) head->parent, head->color);
+
+  // Inherit color from window's ancestors
+  head->_color = tui_window_color_inherit((tui_window_t*) window, head->color);
 
   tui_ncurses_window_color_on(head->window, head->_color);
 
+
+  // Draw background
   if (head->color.bg != TUI_COLOR_NONE)
   {
     tui_ncurses_window_fill(head->window);
@@ -1341,7 +1366,8 @@ static inline void tui_window_grid_render(tui_window_grid_t* window)
 
         char symbol = square.symbol ? square.symbol : ' ';
 
-        tui_color_t color = tui_color_inherit(head->tui, (tui_window_t*) window, square.color);
+
+        tui_color_t color = tui_color_inherit(head->_color, square.color);
 
         tui_ncurses_window_color_on(head->window, color);
 
@@ -1368,10 +1394,14 @@ static inline void tui_window_parent_render(tui_window_parent_t* window)
 
   overwrite(parent, head->window);
 
-  head->_color = tui_color_inherit(head->tui, (tui_window_t*) head->parent, head->color);
+
+  // Inherit color from window's ancestors
+  head->_color = tui_window_color_inherit((tui_window_t*) window, head->color);
 
   tui_ncurses_window_color_on(head->window, head->_color);
 
+
+  // Draw background
   if (head->color.bg != TUI_COLOR_NONE)
   {
     // If the window has a shadow,
@@ -2426,7 +2456,7 @@ void tui_render(tui_t* tui)
 
   if (menu)
   {
-    menu->_color = tui_color_inherit(menu->tui, NULL, menu->color);
+    menu->_color = tui_color_inherit(tui->color, menu->color);
 
     tui_ncurses_window_color_on(stdscr, menu->_color);
   }
