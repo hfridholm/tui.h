@@ -300,7 +300,7 @@ typedef enum tui_align_t
 typedef struct tui_window_grid_square_t
 {
   tui_color_t color;
-  char        symbol;
+  chtype      symbol;
 } tui_window_grid_square_t;
 
 /*
@@ -1364,7 +1364,7 @@ static inline void tui_window_grid_render(tui_window_grid_t* window)
 
         tui_window_grid_square_t square = window->grid[index];
 
-        char symbol = square.symbol ? square.symbol : ' ';
+        chtype symbol = square.symbol ? square.symbol : ' ';
 
 
         tui_color_t color = tui_color_inherit(head->_color, square.color);

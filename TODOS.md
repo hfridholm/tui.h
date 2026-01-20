@@ -1,6 +1,7 @@
 # Todos
 
 ## Quick Fixes
+* make tui_window_color_inherit void with no color argument
 * add support for rgb hex colors, and limit default colors to 8
 * why do tui_list_t have is_vertical? use parent.is_vertical?
 * add bold and italic attribute to structs, beside tui_color_t
